@@ -1,0 +1,69 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id 'net.ltgt.errorprone' version '2.0.2'
+}
+
+group 'me.sunstorm'
+version '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    runtimeClasspath group: 'ch.qos.logback',               name: 'logback-classic', version: '1.2.10'
+    implementation   group: 'ch.qos.logback',               name: 'logback-core',    version: '1.2.10'
+    implementation   group:'com.github.ben-manes.caffeine', name: 'caffeine',        version: '3.0.5'
+    implementation   group: 'com.google.code.gson',         name: 'gson',            version: '2.8.9'
+    implementation   group: 'io.javalin',                   name: 'javalin',         version: '4.3.0'
+    implementation   group: 'org.slf4j',                    name: 'slf4j-api',       version: '1.7.35'
+    implementation   group: 'org.thymeleaf',                name: 'thymeleaf',       version: '3.1.0.M1'
+
+    compileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
+
+    errorprone         group: 'com.google.errorprone', name: 'error_prone_core', version: '2.11.0'
+    testImplementation group: 'org.assertj',       name: 'assertj-core',          version: '3.22.0'
+    testImplementation group: 'org.mockito',       name: 'mockito-core',          version: '4.3.1'
+    testImplementation group: 'org.mockito',       name: 'mockito-junit-jupiter', version: '4.3.1'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api',     version: '5.7.0'
+    testRuntimeOnly    group: 'org.junit.jupiter', name: 'junit-jupiter-engine',  version: '5.7.0'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        html.enabled false
+        csv.enabled false
+    }
+}
+
+jacocoTestReport.dependsOn(test)
+if (System.env.CI) {
+    test.finalizedBy(jacocoTestReport)
+}
+
+shadowJar {
+    archiveClassifier.set("")
+
+    manifest {
+        attributes(
+                'Main-Class': 'me.sunstorm.bober.Bootstrap'
+        )
+    }
+}
+
+jar.enabled(false)
+assemble.dependsOn(shadowJar)
