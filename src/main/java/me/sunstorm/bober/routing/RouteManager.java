@@ -3,11 +3,9 @@ package me.sunstorm.bober.routing;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.sunstorm.bober.routing.annotate.*;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.invoke.*;
 import java.lang.reflect.Constructor;
@@ -21,7 +19,7 @@ import java.util.stream.Collectors;
 public class RouteManager {
     private final MethodHandles.Lookup lookup = MethodHandles.lookup();
     private final Predicate<Method> methodPredicate = m ->
-                    getType(m) != null
+                    HandlerType.getType(m) != null
                     && m.getReturnType() == void.class
                     && m.getParameterCount() == 1
                     && Context.class.isAssignableFrom(m.getParameterTypes()[0]);
@@ -59,38 +57,7 @@ public class RouteManager {
                         );
 
                         Handler handlerInstance = (Handler) referenceSite.getTarget().bindTo(classInstance).invoke();
-                        switch (getType(method)) {
-                            case BEFORE: {
-                                String path = pathPrefix + method.getAnnotation(Before.class).value();
-                                if (path.isEmpty())
-                                    javalin.before(handlerInstance);
-                                else
-                                    javalin.before(path, handlerInstance);
-                                break;
-                            }
-                            case AFTER: {
-                                String path = pathPrefix + method.getAnnotation(After.class).value();
-                                if (path.isEmpty())
-                                    javalin.after(handlerInstance);
-                                else
-                                    javalin.after(path, handlerInstance);
-                                break;
-                            }
-                            case GET:
-                                javalin.get(pathPrefix + method.getAnnotation(Get.class).value(), handlerInstance);
-                                break;
-                            case POST:
-                                javalin.post(pathPrefix + method.getAnnotation(Post.class).value(), handlerInstance);
-                                break;
-                            case PUT:
-                                javalin.put(pathPrefix + method.getAnnotation(Put.class).value(), handlerInstance);
-                                break;
-                            case PATCH:
-                                javalin.patch(pathPrefix + method.getAnnotation(Patch.class).value(), handlerInstance);
-                                break;
-                            case DELETE:
-                                javalin.delete(pathPrefix + method.getAnnotation(Delete.class).value(), handlerInstance);
-                        }
+                        HandlerType.getType(method).apply(javalin, method, pathPrefix, handlerInstance);
                     } catch (Throwable e) {
                         log.error("Failed to create routing for " + method.getName(), e);
                     }
@@ -110,15 +77,6 @@ public class RouteManager {
             parameterInstances.add(providerMap.get(parameter).get());
         }
         return constructor.newInstance(parameterInstances.toArray());
-    }
-
-    @Nullable
-    private HandlerType getType(@NotNull Method m) {
-        for (HandlerType type : HandlerType.values()) {
-            if (m.isAnnotationPresent(type.getAnnotationClass()))
-                return type;
-        }
-        return null;
     }
 
     //all my homies hate checked exceptions
